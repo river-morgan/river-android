@@ -17,10 +17,12 @@ import android.speech.tts.TextToSpeech
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
+import java.util.UUID
 import kotlin.concurrent.thread
 
 class MainActivity : Activity(), TextToSpeech.OnInitListener {
@@ -223,7 +225,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         thread {
             try {
-                val body = "{\"source\":\"river-android\",\"text\":${json(text)}}"
+                val requestId = UUID.randomUUID().toString()
+                val body = "{\"source\":\"river-android\",\"client_request_id\":${json(requestId)},\"text\":${json(text)}}"
                 val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     connectTimeout = 8000
@@ -234,16 +237,87 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 }
                 OutputStreamWriter(conn.outputStream).use { it.write(body) }
                 val code = conn.responseCode
-                val response = (if (code in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.readText().orEmpty()
-                runOnUiThread {
-                    log("Hermes POST $code ${response.take(240)}")
-                    speakAck(if (code in 200..299) "Sent to River." else "River endpoint returned an error.")
-                    abandonAudioFocus()
+                val response = readResponse(conn, code)
+                runOnUiThread { log("Hermes POST $code ${response.take(280)}") }
+                if (code in 200..299) {
+                    val json = JSONObject(response)
+                    val ack = json.optString("ack", "Sent to River.")
+                    val statusUrl = json.optString("status_url", "")
+                    runOnUiThread {
+                        speakAck(ack)
+                        abandonAudioFocus()
+                    }
+                    if (statusUrl.isNotBlank()) pollHermesResult(statusUrl, token)
+                } else {
+                    runOnUiThread {
+                        speakAck("River endpoint returned an error.")
+                        abandonAudioFocus()
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread { log("Hermes POST failed: ${e.message}"); speakAck("I captured it, but could not reach River."); abandonAudioFocus() }
             }
         }
+    }
+
+    private fun pollHermesResult(statusUrl: String, token: String) {
+        thread {
+            var delayMs = 1800L
+            repeat(75) { attempt ->
+                try {
+                    Thread.sleep(delayMs)
+                    val conn = (URL(statusUrl).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = 8000
+                        readTimeout = 12000
+                        if (token.isNotBlank()) setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    val code = conn.responseCode
+                    val response = readResponse(conn, code)
+                    if (code !in 200..299) {
+                        runOnUiThread { log("Hermes status $code ${response.take(220)}") }
+                        return@thread
+                    }
+                    val json = JSONObject(response)
+                    val status = json.optString("status", "unknown")
+                    if (attempt == 0 || attempt % 5 == 0) runOnUiThread { log("Hermes run status: $status") }
+                    when (status) {
+                        "completed" -> {
+                            val reply = json.optString("final_reply", "").trim()
+                            runOnUiThread {
+                                if (reply.isNotBlank()) {
+                                    log("River replied: ${reply.take(1000)}")
+                                    speakFinal(reply)
+                                } else {
+                                    log("River completed without a spoken reply.")
+                                }
+                            }
+                            return@thread
+                        }
+                        "failed" -> {
+                            val error = json.optString("error", "River run failed.")
+                            runOnUiThread { log("River failed: ${error.take(500)}"); speakAck("River hit an error.") }
+                            return@thread
+                        }
+                    }
+                    if (delayMs < 5000L) delayMs += 400L
+                } catch (e: Exception) {
+                    runOnUiThread { log("Hermes status failed: ${e.message}") }
+                    return@thread
+                }
+            }
+            runOnUiThread { log("River is still working; polling stopped after timeout.") }
+        }
+    }
+
+    private fun readResponse(conn: HttpURLConnection, code: Int): String =
+        (if (code in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.readText().orEmpty()
+
+    private fun speakFinal(reply: String) {
+        val spoken = reply.replace(Regex("\\s+"), " ").take(420)
+        requestTransientAudioFocus()
+        tts.speak(spoken, TextToSpeech.QUEUE_FLUSH, null, "river-final-${System.currentTimeMillis()}")
+        window.decorView.postDelayed({ abandonAudioFocus() }, 12000)
     }
 
     private fun json(s: String): String = buildString {
