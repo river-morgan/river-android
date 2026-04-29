@@ -27,6 +27,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var tts: TextToSpeech
     private lateinit var audioManager: AudioManager
     private var focusRequest: AudioFocusRequest? = null
+    private var autoStartedThisLaunch = false
     private lateinit var logView: TextView
     private lateinit var endpointInput: EditText
     private lateinit var tokenInput: EditText
@@ -141,8 +142,24 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             intent.action == ACTION_ASK -> intent.getStringExtra("text")
             else -> null
         }
-        if (!text.isNullOrBlank()) processCapturedText(text)
-        else if (intent.getBooleanExtra(EXTRA_AUTO_START, false)) startVoiceCapture()
+        if (!text.isNullOrBlank()) {
+            log("Intent text received from ${intent.action ?: "unknown"}.")
+            processCapturedText(text)
+        } else if (shouldAutoStart(intent)) {
+            log("Auto-starting voice capture from ${intent.action ?: "launcher"}.")
+            autoStartedThisLaunch = true
+            rootViewPostDelayed { startVoiceCapture() }
+        }
+    }
+
+    private fun shouldAutoStart(intent: Intent): Boolean {
+        if (autoStartedThisLaunch) return false
+        if (intent.getBooleanExtra(EXTRA_AUTO_START, false)) return true
+        return intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER)
+    }
+
+    private fun rootViewPostDelayed(block: () -> Unit) {
+        window.decorView.postDelayed(block, 500)
     }
 
     private fun startVoiceCapture() {
