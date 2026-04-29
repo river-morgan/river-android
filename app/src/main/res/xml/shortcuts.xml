@@ -1,4 +1,18 @@
-<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <capability
+        android:name="custom.actions.intent.ASK_RIVER"
+        app:queryPatterns="@array/AskRiverQueries">
+        <intent android:action="ee.river.android.ASK">
+            <url-template android:value="river://ask{?message}" />
+            <parameter
+                android:name="message"
+                android:key="text"
+                android:mimeType="https://schema.org/Text" />
+        </intent>
+    </capability>
+
     <shortcut android:shortcutId="ask_river" android:enabled="true" android:icon="@drawable/ic_river" android:shortcutShortLabel="@string/shortcut_ask_short" android:shortcutLongLabel="@string/shortcut_ask_long">
         <intent android:action="ee.river.android.ASK" android:targetPackage="ee.river.android" android:targetClass="ee.river.android.MainActivity">
             <extra android:name="auto_start" android:value="true" />

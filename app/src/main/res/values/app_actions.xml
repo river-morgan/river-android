@@ -1,0 +1,9 @@
+<resources>
+    <array name="AskRiverQueries">
+        <item>ask River $message</item>
+        <item>tell River $message</item>
+        <item>ask River to $message</item>
+        <item>tell River to $message</item>
+        <item>send to River $message</item>
+    </array>
+</resources>
