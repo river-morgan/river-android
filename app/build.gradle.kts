@@ -22,6 +22,33 @@ android {
         versionCode = 3
         versionName = "0.1.2"
     }
+
+    val riverUploadKeystore = System.getenv("RIVER_UPLOAD_KEYSTORE")
+    val riverUploadStorePassword = System.getenv("RIVER_UPLOAD_STORE_PASSWORD")
+    val riverUploadKeyAlias = System.getenv("RIVER_UPLOAD_KEY_ALIAS")
+    val riverUploadKeyPassword = System.getenv("RIVER_UPLOAD_KEY_PASSWORD")
+
+    if (!riverUploadKeystore.isNullOrBlank() &&
+        !riverUploadStorePassword.isNullOrBlank() &&
+        !riverUploadKeyAlias.isNullOrBlank() &&
+        !riverUploadKeyPassword.isNullOrBlank()
+    ) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(riverUploadKeystore)
+                storePassword = riverUploadStorePassword
+                keyAlias = riverUploadKeyAlias
+                keyPassword = riverUploadKeyPassword
+            }
+        }
+
+        buildTypes {
+            getByName("release") {
+                signingConfig = signingConfigs.getByName("release")
+                isMinifyEnabled = false
+            }
+        }
+    }
 }
 
 dependencies {

@@ -2,6 +2,9 @@
 build/
 app/build/
 dist/
+release/
+*.jks
+*.keystore
 local.properties
 *.iml
 .idea/
