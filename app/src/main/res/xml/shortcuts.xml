@@ -1,0 +1,6 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="ask_river" android:enabled="true" android:icon="@drawable/ic_river" android:shortcutShortLabel="@string/shortcut_ask_short" android:shortcutLongLabel="@string/shortcut_ask_long">
+        <intent android:action="ee.river.android.ASK" android:targetPackage="ee.river.android" android:targetClass="ee.river.android.MainActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>
