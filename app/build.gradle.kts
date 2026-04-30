@@ -19,8 +19,17 @@ android {
         applicationId = "ee.river.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.2.0"
+        versionCode = 5
+        versionName = "0.3.0"
+
+        val riverEndpoint = System.getenv("RIVER_ANDROID_ENDPOINT") ?: ""
+        val riverToken = System.getenv("RIVER_ANDROID_TOKEN") ?: ""
+        buildConfigField("String", "RIVER_ENDPOINT", "\"${riverEndpoint.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "RIVER_TOKEN", "\"${riverToken.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     val riverUploadKeystore = System.getenv("RIVER_UPLOAD_KEYSTORE")
